@@ -126,40 +126,46 @@ $(document).ready(function () {
 <p>The following analysis looks at declining middle-class housing stock in Massachusetts.</p>
 <p>On the format: each question is followed by the <a href="https://www.r-project.org/">R</a> code that generates the answer. This is also known as <strong>reproducible research</strong>, a practice that’s slowly being adopted by newspapers (e.g. <a href="https://github.com/fivethirtyeight/data">538</a>, <a href="https://github.com/theupshot">The Upshot.</a>) From <a href="http://en.wikipedia.org/wiki/Reproducibility#Reproducible_research">wikipedia</a>: “The term reproducible research refers to the idea that the ultimate product of academic research is the paper along with the full computational environment used to produce the results in the paper such as the code, data, etc. that can be used to reproduce the results and create new work based on the research.”</p>
 <hr />
-<pre class="r"><code># read population data
-pop &lt;- read.csv(&#39;./ACS_14_5YR_B01003/ACS_14_5YR_B01003_with_ann.csv&#39;, skip=1) %&gt;%
-    select(town=Geography, population=Estimate..Total) %&gt;%
-    mutate(town=str_match(town, &#39;(^.*) (town|city),&#39;)[,2]) %&gt;%
-    na.omit() %&gt;%
-    arrange(town)
-
-# read housing data
-# join with population
-data &lt;- read.csv(&#39;./housing-stock.csv&#39;) %&gt;%
-    mutate(town = sub(&#39;, MA&#39;, &#39;&#39;, town)) %&gt;%
-    left_join(pop, by=c(&#39;town&#39;))</code></pre>
+<div id="show-me-the-change-in-total-units-for-sale-for-all-of-eastern-mass." class="section level3">
+<h3>Show me the change in total units for sale for all of Eastern Mass.:</h3>
+<pre class="r"><code>data %&gt;%
+    select(town, may_2016, may_2012) %&gt;%
+    gather(date, count, -town) %&gt;%
+    group_by(date) %&gt;%
+    summarise(count = sum(count)) %&gt;%
+    mutate(town = c(&#39;MA&#39;, &#39;MA&#39;)) %&gt;%
+    arrange(desc(date)) %&gt;%
+    ggplot(aes(town, count, fill=date)) +
+    geom_bar(stat=&#39;identity&#39;, position=&#39;stack&#39;) +
+    coord_flip() +
+    scale_y_continuous(labels=scales::comma) +
+    labs(
+        title=&#39;Eastern Mass. units for sale in May&#39;,
+        subtitle=&#39;For properties under $500,000&#39;
+    ) +
+    xlab(&#39;&#39;) + ylab(&#39;Units for sale&#39;)</code></pre>
+<p><img src="Housing-stock_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
 <hr />
-<p>Graph all housing stock change over time, normalized by population, sorted by 2012 rate</p>
-<pre class="r"><code># calculate (single family + condo) rates
-# reorder by rate.all...2012
-# remove unused columns
-# convert from wide to long data
-delta.all &lt;- data %&gt;%
-    mutate(
-        rate.all...2012 = 10000 * (single.family...2012 + condo...2012)/population,
-        rate.all...2016 = 10000 * (single.family...2016 + condo...2016)/population
-    ) %&gt;%
-    reorder_by(town, ~rate.all...2012, .) %&gt;%
-    select(town, rate.all...2012, rate.all...2016) %&gt;%
-    gather(type, rate, -town) %&gt;%
-    separate(type, c(&#39;type&#39;, &#39;year&#39;), &#39;\\.{3}&#39;)
-
-ggplot(delta.all, aes(rate, town)) +
-    geom_line(arrow=arrow(type=&#39;closed&#39;, angle=25, length=unit(0.05, &#39;inches&#39;), ends=&#39;first&#39;), size=0.35) +
-    xlab(&#39;Rate of single family + condos for sale per 10,000 people. Sorted by 2012 rates.&#39;) +
-    ylab(&#39;Town&#39;) +
-    labs(title=&#39;Change in Mass. housing stock availability over time&#39;, subtitle=&#39;For single-family and condos under $500,000&#39;)</code></pre>
+</div>
+<div id="show-me-the-change-in-total-units-for-sale-for-each-town-in-eastern-mass." class="section level3">
+<h3>Show me the change in total units for sale for each town in Eastern Mass.:</h3>
+<pre class="r"><code>data %&gt;%
+    select(town, may_2016, may_2012) %&gt;%
+    gather(date, count, -town) %&gt;%
+    group_by(town, date) %&gt;%
+    summarise(count = sum(count)) %&gt;%
+    arrange(desc(date)) %&gt;%
+    ggplot(aes(town, count, fill=date)) +
+    geom_bar(stat=&#39;identity&#39;, position=&#39;stack&#39;) +
+    coord_flip() +
+    scale_y_continuous(labels=scales::comma) +
+    labs(
+        title=&#39;Eastern Mass. units for sale in May&#39;,
+        subtitle=&#39;For properties under $500,000&#39;
+    ) +
+    xlab(&#39;&#39;) + ylab(&#39;Units for sale&#39;)</code></pre>
 <p><img src="Housing-stock_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+</div>
 
 
 
