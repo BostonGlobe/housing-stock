@@ -1,0 +1,179 @@
+---
+title: "Mass. housing stock"
+author: "Gabriel Florit"
+output:
+  html_document:
+    self_contained: false
+---
+
+The following analysis looks at declining middle-class housing stock in Massachusetts.
+
+On the format: each question is followed by the [R](https://www.r-project.org/) code that generates the answer. This is also known as **reproducible research**, a practice that's slowly being adopted by newspapers (e.g. [538](https://github.com/fivethirtyeight/data), [The Upshot.](https://github.com/theupshot)) From [wikipedia](http://en.wikipedia.org/wiki/Reproducibility#Reproducible_research): "The term reproducible research refers to the idea that the ultimate product of academic research is the paper along with the full computational environment used to produce the results in the paper such as the code, data, etc. that can be used to reproduce the results and create new work based on the research."
+
+```{r, message=F, warning=F, echo=F}
+
+# set working directory
+setwd("~/Documents/dev/housing-stock")
+
+# load libraries
+library(stringr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(plotflow)
+
+```
+
+***
+```{r}
+
+# read housing data
+data <- read.csv('./housing-stock.csv') %>%
+	rename(town=Municipality) %>%
+	gather(type, count, -town) %>%
+	separate(type, c('type', 'year'), '_') %>%
+	mutate(town=str_to_title(town))
+
+```
+
+***
+```{r, warning=F, message=F}
+
+# read population data
+pop <- read.csv('./ACS_14_5YR_B01003/ACS_14_5YR_B01003_with_ann.csv', skip=1) %>%
+	select(town=Geography, population=Estimate..Total) %>%
+	mutate(town=str_match(town, '(^.*) (town|city),')[,2]) %>%
+	na.omit() %>%
+	arrange(town)
+
+# read housing data
+# join with population
+data <- read.csv('./housing-stock.csv') %>%
+	mutate(town = sub(', MA', '', town)) %>%
+	left_join(pop, by=c('town'))
+	
+```
+
+***
+Graph all housing stock change over time, normalized by population, sorted by 2012 rate.
+```{r}
+
+# calculate (single family + condo) rates
+# reorder by rate.all...2012
+# remove unused columns
+# convert from wide to long data
+delta.all <- data %>%
+	mutate(
+		rate.all...2012 = 10000 * (single.family...2012 + condo...2012)/population,
+		rate.all...2016 = 10000 * (single.family...2016 + condo...2016)/population
+	) %>%
+	reorder_by(town, ~rate.all...2012, .) %>%
+	select(town, rate.all...2012, rate.all...2016) %>%
+	gather(type, rate, -town) %>%
+	separate(type, c('type', 'year'), '\\.{3}')
+
+ggplot(delta.all, aes(rate, town)) +
+	geom_line() +
+	geom_point(aes(color=year)) +
+	xlab('Rate of combined single-family + condos for sale per 10,000 people') +
+	ylab('Town') +
+	labs(
+		title='Change in Mass. housing stock availability over time',
+		subtitle='For single-family and condos under $500,000, sorted by 2012 rates'
+	)
+
+```
+
+***
+Graph all housing stock change over time, normalized by population, sorted by 2016 rate.
+```{r}
+
+# calculate (single family + condo) rates
+# reorder by rate.all...2012
+# remove unused columns
+# convert from wide to long data
+delta.all <- data %>%
+	mutate(
+		rate.all...2012 = 10000 * (single.family...2012 + condo...2012)/population,
+		rate.all...2016 = 10000 * (single.family...2016 + condo...2016)/population
+	) %>%
+	reorder_by(town, ~rate.all...2016, .) %>%
+	select(town, rate.all...2012, rate.all...2016) %>%
+	gather(type, rate, -town) %>%
+	separate(type, c('type', 'year'), '\\.{3}')
+
+ggplot(delta.all, aes(rate, town)) +
+	geom_line(arrow=arrow(type='closed', angle=25, length=unit(0.05, 'inches'), ends='first'), size=0.35) +
+	xlab('Rate of combined single-family + condos for sale per 10,000 people') +
+	ylab('Town') +
+	labs(
+		title='Change in Mass. housing stock availability over time',
+		subtitle='For single-family and condos under $500,000, sorted by 2016 rates'
+	)
+
+```
+
+***
+Graph single-family change over time, normalized by population, sorted by 2016 rate.
+```{r}
+
+# calculate (single family) rates
+# reorder by rate.all...2012
+# remove unused columns
+# convert from wide to long data
+delta.all <- data %>%
+	mutate(
+		rate.all...2012 = 10000 * (single.family...2012)/population,
+		rate.all...2016 = 10000 * (single.family...2016)/population
+	) %>%
+	reorder_by(town, ~rate.all...2016, .) %>%
+	select(town, rate.all...2012, rate.all...2016) %>%
+	gather(type, rate, -town) %>%
+	separate(type, c('type', 'year'), '\\.{3}')
+
+ggplot(delta.all, aes(rate, town)) +
+	geom_line(arrow=arrow(type='closed', angle=25, length=unit(0.05, 'inches'), ends='first'), size=0.35) +
+	xlab('Rate of properties for sale per 10,000 people') +
+	ylab('Town') +
+	labs(
+		title='Change in Mass. single-family stock availability, 2012-2016',
+		subtitle='For properties under $500,000, sorted by 2016 rates'
+	)
+
+
+***
+Graph condo change over time, normalized by population, sorted by 2016 rate.
+
+# calculate (single family) rates
+# reorder by rate.all...2012
+# remove unused columns
+# convert from wide to long data
+delta.all <- data %>%
+	mutate(
+		rate.all...2012 = 10000 * (condo...2012)/population,
+		rate.all...2016 = 10000 * (condo...2016)/population
+	)
+
+
+	reorder_by(town, ~rate.all...2012, .) %>%
+	select(town, rate.all...2012, rate.all...2016) %>%
+	gather(type, rate, -town) %>%
+	separate(type, c('type', 'year'), '\\.{3}')
+
+ggplot(delta.all, aes(rate, town)) +
+	geom_line(arrow=arrow(type='closed', angle=25, length=unit(0.05, 'inches'), ends='first'), size=0.35) +
+	xlab('Rate of properties for sale per 10,000 people') +
+	ylab('Town') +
+	labs(
+		title='Change in Mass. condo stock availability, 2012-2016',
+		subtitle='For properties under $500,000, sorted by 2016 rates'
+	)
+
+
+
+
+
+
+
+
+
